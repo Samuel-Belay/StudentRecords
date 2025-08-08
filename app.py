@@ -48,6 +48,8 @@ class StudentManagementApp:
         # Main container
         self.main_frame = ttk.Frame(self.root)
         self.main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        self.main_frame.rowconfigure(2, weight=1)
+        self.main_frame.columnconfigure(0, weight=1)
         
         # Subject Management Frame
         subject_frame = ttk.LabelFrame(self.main_frame, text="Subject Management", padding=10)
@@ -100,7 +102,7 @@ class StudentManagementApp:
         # Display Frame
         display_frame = ttk.LabelFrame(self.main_frame, text="Student Records", padding=10)
         display_frame.grid(row=2, column=0, sticky="nsew", padx=5, pady=5)
-        
+
         # Treeview
         self.tree = ttk.Treeview(display_frame, columns=("RollNo", "Name", "Total", "Average", "Grade"), show="headings")
         self.tree.heading("RollNo", text="Roll No")
@@ -108,22 +110,27 @@ class StudentManagementApp:
         self.tree.heading("Total", text="Total")
         self.tree.heading("Average", text="Average")
         self.tree.heading("Grade", text="Grade")
-        
         self.tree.column("RollNo", width=80, anchor="center")
         self.tree.column("Name", width=150)
         self.tree.column("Total", width=80, anchor="center")
         self.tree.column("Average", width=80, anchor="center")
         self.tree.column("Grade", width=60, anchor="center")
-        
         self.tree.pack(fill=tk.BOTH, expand=True)
-        
+
         # Treeview buttons
         tree_button_frame = ttk.Frame(display_frame)
         tree_button_frame.pack(fill=tk.X, pady=5)
-        
         ttk.Button(tree_button_frame, text="Edit Selected", command=self.edit_selected).pack(side=tk.LEFT, padx=5)
         ttk.Button(tree_button_frame, text="Delete Selected", command=self.delete_selected).pack(side=tk.LEFT, padx=5)
         ttk.Button(tree_button_frame, text="Print Preview", command=self.print_preview).pack(side=tk.LEFT, padx=5)
+
+        # Move search frame to the bottom and use sticky="ew"
+        search_frame = ttk.LabelFrame(self.main_frame, text="Search Student", padding=10)
+        search_frame.grid(row=10, column=0, sticky="ew", padx=5, pady=5)
+        ttk.Label(search_frame, text="Roll Number:").grid(row=0, column=0, sticky="w", pady=2)
+        self.search_roll_entry = ttk.Entry(search_frame)
+        self.search_roll_entry.grid(row=0, column=1, sticky="ew", pady=2, padx=5)
+        ttk.Button(search_frame, text="Search", command=self.search_student_by_roll).grid(row=0, column=2, padx=5)
         
         # Details Frame
         details_frame = ttk.LabelFrame(self.main_frame, text="Student Details", padding=10)
@@ -143,7 +150,19 @@ class StudentManagementApp:
         # Initialize marks entry fields
         self.mark_entries = {}
         self.update_marks_fields()
-    
+
+    def search_student_by_roll(self):
+        rn_str = self.search_roll_entry.get().strip()
+        if not rn_str.isdigit():
+            messagebox.showerror("Error", "Please enter a valid integer roll number")
+            return
+        rn = int(rn_str)
+        for student in self.students:
+            if student.rn == rn:
+                self.display_student_details(student)
+                return
+        messagebox.showinfo("Not Found", f"No student found with roll number {rn}")
+
     def add_subject(self):
         subject = self.subject_name.get().strip()
         if not subject:
@@ -190,7 +209,7 @@ class StudentManagementApp:
             entry = ttk.Entry(self.marks_frame)
             entry.grid(row=i, column=1, sticky="ew", pady=2, padx=5)
             self.mark_entries[subject] = entry
-    
+
     def add_student(self):
         try:
             if not self.subjects:
@@ -202,6 +221,10 @@ class StudentManagementApp:
                 messagebox.showerror("Error", "Please enter a valid roll number")
                 return
             rn = int(rn)
+            if rn <= 0 or rn > 100:
+                messagebox.showerror("Error", "Roll number must be between 1 and 100")
+                return
+            
             name = self.name.get().strip()
             
             if not name:
@@ -352,13 +375,15 @@ Grade: {student.grade()}
     def update_student(self):
         self.add_student()  # Reuse the add_student logic for updates
     
+    # Cancel edit mode
     def cancel_edit(self):
         self.current_edit_id = None
         self.clear_fields()
         self.add_button.config(state=tk.NORMAL)
         self.update_button.config(state=tk.DISABLED)
         self.cancel_button.config(state=tk.DISABLED)
-    
+
+    # Delete selected student
     def delete_selected(self):
         selected_items = self.tree.selection()
         if not selected_items:
@@ -392,8 +417,8 @@ Grade: {student.grade()}
         
         messagebox.showinfo("Success", "Student deleted successfully")
     
+    # Clear and repopulate the treeview
     def refresh_tree(self):
-        # Clear and repopulate the treeview
         for item in self.tree.get_children():
             self.tree.delete(item)
         for student in self.students:
@@ -459,7 +484,7 @@ Grade: {student.grade()}
         ).pack(side=tk.RIGHT, padx=10)
     
     def generate_print_content(self, student):
-        """Generate nicely formatted content for printing"""
+        #Generate formatted content for printing
         content = "\n"
         content += "=" * 60 + "\n"
         content += "STUDENT REPORT".center(60) + "\n"
